@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sparrow-detector-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/weights:/app/weights:ro
+      - uploads_data:/app/uploads
+      - results_data:/app/results
+      - db_data:/app/db
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MODEL_PATH=/app/weights/best.pt
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sparrow-detector-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - VITE_API_BASE=http://localhost:8000/api
+
+volumes:
+  uploads_data:
+  results_data:
+  db_data:
