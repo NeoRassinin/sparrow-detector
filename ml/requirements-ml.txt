@@ -1,0 +1,2 @@
+ultralytics>=8.4.60
+fiftyone>=1.16.0
