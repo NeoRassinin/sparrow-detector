@@ -9,6 +9,7 @@ export default function Detect({ onSuccess }) {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [patchMode, setPatchMode] = useState(false)
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 0) {
@@ -33,7 +34,7 @@ export default function Detect({ onSuccess }) {
     setLoading(true)
     setError(null)
     try {
-      const detectionResult = await detectAPI.upload(file)
+      const detectionResult = await detectAPI.upload(file, { patch: patchMode })
       setResult(detectionResult)
       onSuccess()
     } catch (err) {
@@ -91,6 +92,36 @@ export default function Detect({ onSuccess }) {
             <p className="text-sm font-medium">{error}</p>
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={() => setPatchMode((v) => !v)}
+          className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+            patchMode
+              ? 'border-forest-400 bg-forest-50/80'
+              : 'border-forest-200 bg-white/60 hover:bg-white/80'
+          }`}
+        >
+          <span
+            className={`mt-0.5 grid h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition ${
+              patchMode ? 'bg-forest-500' : 'bg-forest-200'
+            }`}
+          >
+            <span
+              className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                patchMode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </span>
+          <span>
+            <span className="block font-display text-sm font-bold text-forest-800">
+              Детальный режим (патчи)
+            </span>
+            <span className="block text-xs text-forest-600/60">
+              Лучше находит мелких птиц на дальнем плане и в стаях. Работает медленнее.
+            </span>
+          </span>
+        </button>
 
         <div className="flex gap-3">
           <button

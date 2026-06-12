@@ -1,20 +1,20 @@
 import uuid
 import time
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse
 from PIL import Image
 from io import BytesIO
 import traceback
 
 from ..config import ALLOWED_EXTENSIONS, MAX_IMAGE_SIZE, UPLOADS_DIR, RESULTS_DIR
-from ..services.yolo import run_inference
+from ..services.yolo import run_inference, save_annotated
 from ..models.database import insert_detection
 
 router = APIRouter(prefix="/api", tags=["detect"])
 
 
 @router.post("/detect")
-async def detect(file: UploadFile = File(...)):
+async def detect(file: UploadFile = File(...), patch: bool = Form(False)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
@@ -45,34 +45,16 @@ async def detect(file: UploadFile = File(...)):
 
     start_time = time.time()
     try:
-        result = run_inference(original_path)
+        detections, annotated_im, sparrow_count = run_inference(
+            original_path, use_patches=patch
+        )
     except Exception as e:
         original_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
 
     processing_time = (time.time() - start_time) * 1000
 
-    detections = []
-    sparrow_count = 0
-    if result:
-        annotated_im = result.plot()
-        Image.fromarray(annotated_im).save(str(annotated_path))
-
-        if result.boxes:
-            for box in result.boxes:
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                conf = float(box.conf[0])
-                detections.append(
-                    {
-                        "x1": int(x1),
-                        "y1": int(y1),
-                        "x2": int(x2),
-                        "y2": int(y2),
-                        "confidence": round(conf, 3),
-                        "label": "sparrow",
-                    }
-                )
-                sparrow_count += 1
+    save_annotated(annotated_im, annotated_path)
 
     db_id = await insert_detection(
         filename=original_filename,
@@ -96,4 +78,5 @@ async def detect(file: UploadFile = File(...)):
         "processing_time_ms": round(processing_time, 2),
         "image_width": image_width,
         "image_height": image_height,
+        "mode": "patch" if patch else "standard",
     }

@@ -8,11 +8,15 @@ const api = axios.create({
 })
 
 export const detectAPI = {
-  upload: async (file: File) => {
+  upload: async (file: File, opts?: { patch?: boolean }) => {
+    const patch = opts?.patch ?? false
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('patch', String(patch))
     const response = await api.post('/detect', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      // Tiled inference runs many forward passes — give it more headroom.
+      timeout: patch ? 180000 : 60000,
     })
     return response.data
   },
